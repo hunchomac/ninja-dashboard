@@ -10,19 +10,39 @@ export default function App() {
   }, []);
 
   async function fetchDevices() {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/devices');
-      const data = await response.json();
-      setDevices(data.devices || []);
-      setError(null);
-    } catch (err) {
-      setError('Failed to load devices: ' + err.message);
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  try {
+    setLoading(true);
+    
+    // Step 1: Get auth token from NinjaRMM
+    const tokenRes = await fetch('https://app.ninjarmm.com/ws/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: '7IQFEJQ2PMGQ7EADDF4F',
+        client_secret: '64vrpjsa94vduos0f95k83tc81rpq370s1jd1tv1',
+        scope: 'monitoring management'
+      })
+    });
+
+    const tokenData = await tokenRes.json();
+    const token = tokenData.access_token;
+
+    // Step 2: Get devices using the token
+    const deviceRes = await fetch('https://app.ninjarmm.com/v2/devices-detailed', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    const data = await deviceRes.json();
+    setDevices(data.devices || []);
+    setError(null);
+  } catch (err) {
+    setError('Failed to load devices: ' + err.message);
+    console.error(err);
+  } finally {
+    setLoading(false);
   }
+}
 
   return (
     <div className="app">
