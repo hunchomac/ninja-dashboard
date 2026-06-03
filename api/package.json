@@ -1,0 +1,7 @@
+{
+  "name": "ninja-api",
+  "version": "1.0.0",
+  "description": "NinjaRMM API functions",
+  "main": "devices.js",
+  "dependencies": {}
+}
