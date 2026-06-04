@@ -1,7 +1,11 @@
-module.exports = async function (context, req) {
-  context.res = {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: 'Function is working!', clientId: process.env.NINJA_CLIENT_ID ? 'Found' : 'Missing' })
-  };
-};
+const { app } = require('@azure/functions');
+
+app.http('devices', {
+  methods: ['GET', 'POST'],
+  authLevel: 'anonymous',
+  handler: async (request, context) => {
+    return {
+      jsonBody: { message: 'Function is working!' }
+    };
+  }
+});
