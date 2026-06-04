@@ -1,13 +1,6 @@
 const https = require('https');
 
-let cachedToken = null;
-let tokenExpiry = null;
-
 async function getNinjaToken() {
-  if (cachedToken && Date.now() < tokenExpiry) {
-    return cachedToken;
-  }
-
   return new Promise((resolve, reject) => {
     const data = new URLSearchParams({
       grant_type: 'client_credentials',
@@ -22,7 +15,7 @@ async function getNinjaToken() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Content-Length': data.length
+        'Content-Length': Buffer.byteLength(data)
       }
     };
 
@@ -30,10 +23,16 @@ async function getNinjaToken() {
       let body = '';
       res.on('data', chunk => body += chunk);
       res.on('end', () => {
-        const result = JSON.parse(body);
-        cachedToken = result.access_token;
-        tokenExpiry = Date.now() + (result.expires_in - 60) * 1000;
-        resolve(cachedToken);
+        try {
+          const result = JSON.parse(body);
+          if (result.access_token) {
+            resolve(result.access_token);
+          } else {
+            reject(new Error(`Token error: ${JSON.stringify(result)}`));
+          }
+        } catch (e) {
+          reject(new Error(`Parse error: ${body}`));
+        }
       });
     });
 
@@ -47,7 +46,7 @@ module.exports = async function (context, req) {
   try {
     const token = await getNinjaToken();
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const options = {
         hostname: 'app.ninjarmm.com',
         path: '/v2/devices-detailed',
@@ -62,11 +61,20 @@ module.exports = async function (context, req) {
         let body = '';
         res.on('data', chunk => body += chunk);
         res.on('end', () => {
-          context.res = {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.parse(body)
-          };
+          try {
+            const devices = JSON.parse(body);
+            context.res = {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ devices: devices })
+            };
+          } catch (e) {
+            context.res = {
+              status: 500,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ error: 'Failed to parse devices', raw: body })
+            };
+          }
           resolve();
         });
       });
@@ -74,7 +82,8 @@ module.exports = async function (context, req) {
       apiReq.on('error', (err) => {
         context.res = {
           status: 500,
-          body: { error: err.message }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ error: err.message })
         };
         resolve();
       });
@@ -84,7 +93,8 @@ module.exports = async function (context, req) {
   } catch (error) {
     context.res = {
       status: 500,
-      body: { error: error.message }
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: error.message })
     };
   }
 };
