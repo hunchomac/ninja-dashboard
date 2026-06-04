@@ -2,6 +2,8 @@
   "name": "ninja-api",
   "version": "1.0.0",
   "description": "NinjaRMM API functions",
-  "main": "devices.js",
-  "dependencies": {}
+  "main": "index.js",
+  "dependencies": {
+    "@azure/functions": "^4.0.0"
+  }
 }
